@@ -8,7 +8,11 @@ int main(){
 
 	std::cin>>str;
 	LooongLong l2(str);
-	if(l1<l2)
-		std::cout<<l1<<" < "<<l2<<std::endl;
+	if(l1<=l2)
+		std::cout<<l1<<" <= "<<l2<<std::endl;
+	else
+		std::cout<<l2<<" <= "<<l1<<std::endl;
+	std::cout<<l1+l2<<std::endl;
+		
 	return 0;
 }
