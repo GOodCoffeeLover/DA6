@@ -1,0 +1,182 @@
+#pragma once 
+
+#include <vector>
+#include <string>
+#include <iostream>
+#include <iomanip>
+#include <sstream>
+
+class LooongLong{
+private:
+	static const int _base = 1000*1000*1000; //основание системы исчисления
+	std::vector<int> _digits;
+	bool _negative;
+	void remove_leading_zeros();
+public:
+	LooongLong();
+	LooongLong(std::string);
+	
+	
+	//operators
+	operator std::string() const;
+	const LooongLong operator +() const;
+	const LooongLong operator -() const;
+	friend std::ostream& operator<< (std::ostream& os, const LooongLong& ll);
+	
+	friend bool operator ==(const LooongLong& l, const LooongLong& r);
+	friend bool operator  <(const LooongLong& l, const LooongLong& r);
+	friend bool operator  >(const LooongLong& l, const LooongLong& r);
+	
+	friend const LooongLong operator + (LooongLong l, const LooongLong& r);
+	friend const LooongLong operator - (LooongLong l, const LooongLong& r);
+	
+};
+
+LooongLong::LooongLong(){
+	_digits.push_back(0);
+	_negative = false;
+}
+
+LooongLong::LooongLong(std::string str){
+	if(str.size()==0){
+		_digits.push_back(0);
+		_negative=false;
+	}else{
+		if(str[0]=='-'){
+			str = str.substr(1);
+			_negative = true;
+		}else{
+			_negative = false;
+		}
+
+		for(int i = str.size(); i >0; i -=9){
+			if(i<9)
+				_digits.push_back(atoi(str.substr(0,i).c_str()));
+			else
+				_digits.push_back(atoi(str.substr(i-9,9).c_str()));
+		}
+		this->remove_leading_zeros();
+	}
+}
+
+
+void LooongLong::remove_leading_zeros(){
+	while(_digits.size()>1 && _digits.back() == 0)
+		_digits.pop_back();
+
+	if(_digits.size()==1 && _digits[0] == 0)
+		_negative = false; 
+}
+
+std::ostream& operator <<(std::ostream& os, const LooongLong& ll){
+	//if(ll._digits.empty()){
+	//	os<<(long long)0;
+	//}else{
+		if(ll._negative)
+			os<<'-';
+		os<<ll._digits.back();
+		char old_fill = os.fill('0');
+		for( int i = ll._digits.size() - 2; i>=0; --i)
+			os<<std::setw(9)<<ll._digits[i];
+		os.fill(old_fill);
+	//}
+	return os;
+}
+
+
+bool operator ==(const LooongLong& l, const LooongLong& r){
+	if(l._negative != r._negative)
+		return false;
+	if(l._digits.size() != r._digits.size())
+		return false;
+	for(unsigned int i = 0; i<l._digits.size(); ++i)
+		if(l._digits[i] != r._digits[i])
+			return false;
+	return true;
+}
+
+
+bool operator <(const LooongLong& l, const LooongLong& r){
+	if(l==r)
+		return false;
+				
+	if(l._negative)
+		if(r._negative)
+			return -r < -l;
+		else
+			return true;
+	else
+		if(r._negative)
+			return false;
+		else
+			if(l._digits.size() != r._digits.size())
+				return l._digits.size() < r._digits.size();
+			else{
+				for(int i=l._digits.size()-1; i>=0; --i)
+					if(l._digits[i] != r._digits[i])
+						return l._digits[i]<r._digits[i];
+				return false;
+			}
+		
+}
+
+
+
+bool operator  >(const LooongLong& l, const LooongLong& r){
+	return !(l<r || l==r);
+}
+
+
+
+const LooongLong LooongLong::operator +() const{
+	return LooongLong(*this);
+}
+
+const LooongLong LooongLong::operator -() const{
+	LooongLong copy(*this);
+	copy._negative = !copy._negative;
+	return  copy;
+}
+
+const LooongLong operator + (LooongLong l, const LooongLong& r){
+	if(l._negative)
+		if(r._negative)
+			return -(-l+(-r));
+		else
+			return (r - (-l));
+	else 
+		if(r._negative)
+			return l - (-r);
+	int carry = 0; //остаток для переноса в следующий "разряд" 1 или 0.
+	for(unsigned int i = 0; i < std::max(l._digits.size(),r._digits.size()) || carry !=0 ; ++i){
+		if(i == l._digits.size()) 
+			l._digits.push_back(0);
+		l._digits[i]+= carry + (i<r._digits.size() ? r._digits[i] : 0);
+		carry = l._digits[i] >=LooongLong::_base;
+		if(carry !=0)
+			l._digits[i] -=LooongLong::_base;
+	}
+		return l;
+}
+
+const LooongLong operator - (LooongLong l, const LooongLong& r){
+	if(r._negative)
+		return l+(-r);
+	else
+		if(l._negative)
+			return - (-l + r);
+		else
+			if(l < r)
+				return -(r-l);
+	int carry = 0;
+	for(unsigned int i = 0; i< r._digits.size() || carry != 0; ++i){
+		l._digits[i] -= carry + (i < r._digits.size()? r._digits[i]:0);
+		carry = l._digits[i]<0;
+		if(carry != 0)
+			l._digits[i] += LooongLong::_base;
+	}
+	l.remove_leading_zeros();
+	return l;
+}
+
+
