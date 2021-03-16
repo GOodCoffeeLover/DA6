@@ -259,7 +259,9 @@ void fft(std::vector<std::complex<double>>& v, bool invert){
 	}
 }
 
-const LooongLong operator * (const LooongLong& l, const LooongLong& r){
+
+/*const LooongLong operator * (const LooongLong& l, const LooongLong& r){
+
 	LooongLong res;
 	std::vector<std::complex<double>> fl (l._digits.begin(), l._digits.end()),
 									  fr (r._digits.begin(), r._digits.end());
@@ -279,7 +281,8 @@ const LooongLong operator * (const LooongLong& l, const LooongLong& r){
  
 	res._digits.resize (n);
 	for (size_t i=0; i<n; ++i)
-		res._digits[i] = (int) (fl[i].real() + 0.5);
+
+		res._digits[i] = (long long) (fl[i].real() + 0.5);
 	int carry = 0;
 	for (size_t i=0; i<n; ++i) {
 		res._digits[i] += carry;
@@ -290,7 +293,28 @@ const LooongLong operator * (const LooongLong& l, const LooongLong& r){
 	res.remove_leading_zeros();
 	res._negative = l._negative ^ r._negative;
 	return res;
+
+}*/
+
+const LooongLong operator *(const LooongLong& l, const LooongLong& r) {
+        LooongLong res;
+        res._digits.resize(l._digits.size() + r._digits.size());
+        for (size_t i = 0; i < l._digits.size(); ++i) {
+                int carry = 0;
+                for (size_t j = 0; j < r._digits.size() || carry != 0; ++j) {
+                        long long cur = res._digits[i + j] +
+                                l._digits[i] * (long long) (j < r._digits.size() ? r._digits[j] : 0) + carry;
+                        res._digits[i + j] = (int) (cur % LooongLong::_base);
+                        carry = (int) (cur / LooongLong::_base);
+                }
+        }
+        res._negative = l._negative ^ r._negative;
+        res.remove_leading_zeros();
+        return res;
 }
+
+
+
 
 void LooongLong::_shift_right(){
 	if(_digits.size() == 0){
@@ -305,15 +329,17 @@ void LooongLong::_shift_right(){
 }
 
 
-const LooongLong operator / (const LooongLong& l, const LooongLong& r){
-	if(r == LooongLong(0))
+
+const LooongLong operator / (const LooongLong& left, const LooongLong& right){
+	if(right == LooongLong(0))
 		throw LooongLong::error();
-	LooongLong b = r, res, cur;
+	LooongLong b = right, res, cur;
 	b._negative = false;
-	res._digits.resize(l._digits.size());
-	for(int i=l._digits.size()-1; i>=0; --i){
+	res._digits.resize(left._digits.size());
+	for(long long i=(long long) left._digits.size()-1; i>=0; --i){
 		cur._shift_right();
-		cur._digits[0] = l._digits[i];
+		cur._digits[0] = left._digits[i];
+
 		cur.remove_leading_zeros();
 		int x=0, 
 			l=0,
@@ -331,7 +357,9 @@ const LooongLong operator / (const LooongLong& l, const LooongLong& r){
 		res._digits[i] = x;
 		cur = cur - b*x;
 	}
-	res._negative = l._negative ^ r._negative;
+
+	res._negative = left._negative ^ right._negative;
+
 	res.remove_leading_zeros();
 	return res;
 }
@@ -348,6 +376,8 @@ const LooongLong LooongLong::pow(LooongLong n) const {
 		if(n.odd())
 			res = res*c;
 		c = c*c;
+
+		//std::cout<<"===="<<c<<"===="<<std::endl;
 		n=n/2; 
 	
 	}
