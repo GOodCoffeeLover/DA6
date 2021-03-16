@@ -5,18 +5,28 @@
 #include <iostream>
 #include <iomanip>
 #include <sstream>
+#include <complex>
+#include <cmath>
 
 class LooongLong{
 private:
-	static const int _base = 1000*1000*1000; //основание системы исчисления
-	std::vector<int> _digits;
+	static const int _base = 10*1000; //основание системы исчисления
+	static const int _base_width = 4;
+	std::vector<long long> _digits;
 	bool _negative;
 	void remove_leading_zeros();
 public:
 	LooongLong();
 	LooongLong(std::string);
+	LooongLong(long long);
+	LooongLong(unsigned long long);
+	LooongLong(int);
+	LooongLong(unsigned int);
 	
-	
+	class error:public std::exception{};
+	void _shift_right();
+	bool odd()const;
+	const LooongLong pow(LooongLong)const;
 	//operators
 	operator std::string() const;
 	const LooongLong operator +() const;
@@ -29,12 +39,61 @@ public:
 	
 	friend const LooongLong operator + (LooongLong l, const LooongLong& r);
 	friend const LooongLong operator - (LooongLong l, const LooongLong& r);
-	
+	friend const LooongLong operator * (const LooongLong& l, const LooongLong& r);
+	friend const LooongLong operator / (const LooongLong& l, const LooongLong& r);
 };
 
 LooongLong::LooongLong(){
 	_digits.push_back(0);
 	_negative = false;
+}
+
+LooongLong::LooongLong(int ll){
+	if(ll<0){
+		_negative = true;
+		ll*=(-1);
+	}else
+		_negative = false;
+	
+	do{
+		_digits.push_back(ll%_base);
+		ll /= _base;
+	}while(ll<0);
+
+}
+
+LooongLong::LooongLong(unsigned int ll){
+	_negative = false;
+	
+	do{
+		_digits.push_back(ll%_base);
+		ll /= _base;
+	}while(ll<0);
+
+}
+
+LooongLong::LooongLong(long long ll){
+	if(ll<0){
+		_negative = true;
+		ll*=(-1);
+	}else
+		_negative = false;
+	
+	do{
+		_digits.push_back(ll%_base);
+		ll /= _base;
+	}while(ll<0);
+
+}
+
+LooongLong::LooongLong(unsigned long long  ll){
+	_negative = false;
+	
+	do{
+		_digits.push_back(ll%_base);
+		ll /= _base;
+	}while(ll<0);
+
 }
 
 LooongLong::LooongLong(std::string str){
@@ -49,11 +108,11 @@ LooongLong::LooongLong(std::string str){
 			_negative = false;
 		}
 
-		for(int i = str.size(); i >0; i -=9){
-			if(i<9)
+		for(int i = str.size(); i >0; i -=_base_width){
+			if(i<_base_width)
 				_digits.push_back(atoi(str.substr(0,i).c_str()));
 			else
-				_digits.push_back(atoi(str.substr(i-9,9).c_str()));
+				_digits.push_back(atoi(str.substr(i-_base_width,_base_width).c_str()));
 		}
 		this->remove_leading_zeros();
 	}
@@ -69,17 +128,13 @@ void LooongLong::remove_leading_zeros(){
 }
 
 std::ostream& operator <<(std::ostream& os, const LooongLong& ll){
-	//if(ll._digits.empty()){
-	//	os<<(long long)0;
-	//}else{
 		if(ll._negative)
 			os<<'-';
 		os<<ll._digits.back();
 		char old_fill = os.fill('0');
 		for( int i = ll._digits.size() - 2; i>=0; --i)
-			os<<std::setw(9)<<ll._digits[i];
+			os<<std::setw(LooongLong::_base_width)<<ll._digits[i];
 		os.fill(old_fill);
-	//}
 	return os;
 }
 
@@ -99,7 +154,6 @@ bool operator ==(const LooongLong& l, const LooongLong& r){
 bool operator <(const LooongLong& l, const LooongLong& r){
 	if(l==r)
 		return false;
-				
 	if(l._negative)
 		if(r._negative)
 			return -r < -l;
@@ -179,4 +233,124 @@ const LooongLong operator - (LooongLong l, const LooongLong& r){
 	return l;
 }
 
+void fft(std::vector<std::complex<double>>& v, bool invert){
+	int n = (int) v.size();
+	if(n==1){
+		return;
+	}
+	std::vector<std::complex<double>> v0(n/2), v1(n/2);
+	for(int i=0; i<n/2; ++i){
+		v0[i] = v[2*i];
+		v1[i] = v[2*i+1];
+	}	
+	fft(v0, invert);
+	fft(v1, invert);
 
+	double ang = 2*M_PI/n * (invert ? -1 : 1);
+	std::complex<double> w(1), wn (std::cos(ang), std::sin(ang));
+	for(int i=0; i<n/2; ++i){
+		v[i] = v0[i] + w * v1[i];
+		v[i+n/2] = v0[i] - w * v1[i];
+		if (invert){
+			v[i] /= 2;  
+			v[i+n/2] /= 2;
+		}
+		w *= wn;
+	}
+}
+
+const LooongLong operator * (const LooongLong& l, const LooongLong& r){
+	LooongLong res;
+	std::vector<std::complex<double>> fl (l._digits.begin(), l._digits.end()),
+									  fr (r._digits.begin(), r._digits.end());
+	size_t n = 1;
+	while (n < std::max(l._digits.size(), r._digits.size()))  
+		n <<= 1;
+	n <<= 1;
+	fl.resize (n),  fr.resize (n);
+ 
+	fft (fl, false); 
+	fft (fr, false); 
+
+	for (size_t i=0; i<n; ++i)
+		fl[i] *= fr[i];
+	
+	fft (fl, true);
+ 
+	res._digits.resize (n);
+	for (size_t i=0; i<n; ++i)
+		res._digits[i] = (int) (fl[i].real() + 0.5);
+	int carry = 0;
+	for (size_t i=0; i<n; ++i) {
+		res._digits[i] += carry;
+		carry = res._digits[i] / LooongLong::_base;
+		res._digits[i] %= LooongLong::_base;
+	}
+
+	res.remove_leading_zeros();
+	res._negative = l._negative ^ r._negative;
+	return res;
+}
+
+void LooongLong::_shift_right(){
+	if(_digits.size() == 0){
+		_digits.push_back(0);
+		return;
+	}
+	_digits.push_back(_digits.back());
+	for(unsigned int i = _digits.size()-2; i>0; --i)
+		_digits[i] = _digits[i-1];
+	_digits[0] = 0;
+
+}
+
+
+const LooongLong operator / (const LooongLong& l, const LooongLong& r){
+	if(r == LooongLong(0))
+		throw LooongLong::error();
+	LooongLong b = r, res, cur;
+	b._negative = false;
+	res._digits.resize(l._digits.size());
+	for(int i=l._digits.size()-1; i>=0; --i){
+		cur._shift_right();
+		cur._digits[0] = l._digits[i];
+		cur.remove_leading_zeros();
+		int x=0, 
+			l=0,
+			r=LooongLong::_base;
+		while(l<=r){
+			int m = (l+r)/2;
+			LooongLong t = b*m;
+			if(t < cur || t == cur){
+				x = m;
+				l = m+1;
+			}else{
+				r = m-1;
+			}
+		}
+		res._digits[i] = x;
+		cur = cur - b*x;
+	}
+	res._negative = l._negative ^ r._negative;
+	res.remove_leading_zeros();
+	return res;
+}
+
+bool LooongLong::odd()const{
+	return _digits[0]%2 == 1; 
+}
+
+const LooongLong LooongLong::pow(LooongLong n) const {
+	LooongLong c(*this), res(1);
+	if(c == 0 && n == 0)
+		throw LooongLong::error();
+	while(!(n == 0)){
+		if(n.odd())
+			res = res*c;
+		c = c*c;
+		n=n/2; 
+	
+	}
+
+	return res;
+}
